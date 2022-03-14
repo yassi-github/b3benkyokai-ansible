@@ -1,0 +1,5 @@
+---
+- name: "Install nextcloud"
+  snap:
+    name: nextcloud
+    state: present

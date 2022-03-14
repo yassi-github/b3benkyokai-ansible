@@ -1,0 +1,14 @@
+---
+- name: package.yaml
+  include_tasks: package.yaml
+
+- name: config.yaml
+  include_tasks: config.yaml
+
+- name: migration.yaml
+  include_tasks: migration.yaml
+  when: migration_mode
+
+- name: "message"
+  debug:
+    msg: "{{ finish_message.split('\n') }}"

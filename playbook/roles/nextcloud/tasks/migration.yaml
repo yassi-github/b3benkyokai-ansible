@@ -1,0 +1,86 @@
+---
+# 移行元データを用意
+- name: "Check migrate dir"
+  stat:
+    path: "{{ copied_datapath }}"
+    get_checksum: no
+  register: migrate_datadir_stat
+
+# 移行元データの準備が完了しているか確認するための中断
+- name: "Ensure copied migration data"
+  fail:
+    msg: |
+      Have you copied migration data?
+      path: {{ copied_datapath }}
+      if Yes, set variable `copied_data` to `yes` .
+  # fail when dirsize is fewer than 0.1 GB
+  failed_when: migrate_datadir_stat.stat.size < 102400000 or not copied_data
+
+# Stash to avoid overwritten
+- name: "Stash .htaccess"
+  copy:
+    src: "{{ nextcloud.datadir_path }}/.htaccess"
+    dest: /root/nextcloud.htaccess.tmp
+    mode: '0640'
+    remote_src: yes
+
+# Recreate nextcloud database
+- name: "Drop database"
+  command: nextcloud.mysql-client -e "DROP DATABASE nextcloud"
+
+- name: "Recreate database"
+  command: nextcloud.mysql-client -e "CREATE DATABASE nextcloud CHARACTER SET utf8mb4 COLLATE utf8mb4_bin"
+
+# Cleanup exist files
+- name: "Delete {{ nextcloud_default_data }}"
+  file:
+    path: "{{ nextcloud.datadir_path }}"
+    state: absent
+
+# Restore
+- name: "Restore commmon data"
+  copy:
+    src: "{{ copied_datapath }}/"
+    dest: "{{ nextcloud.datadir_path }}/"
+    mode: '0770'
+    remote_src: yes
+
+- name: "Copy dumpdata"
+  unarchive:
+    src: mysql_nextcloud_migration.sql.tar.bz2
+    dest: /root/mysql_nextcloud_migration.sql
+    mode: '0640'
+
+- name: "Restore database"
+  shell: nextcloud.mysql-client nextcloud < /root/mysql_nextcloud_migration.sql
+
+- name: "Flush"
+  command: nextcloud.mysql-client -e "FLUSH PRIVILEGES"
+
+- name: "Restore stashed htaccess"
+  copy:
+    src: /root/nextcloud.htaccess.tmp
+    dest: "{{ nextcloud.datadir_path }}/.htaccess"
+    mode: '0644'
+    remote_src: yes
+
+# Fix problems
+- name: "Repair"
+  command: nextcloud.occ maintenance:repair
+  notify: restart nextcloud
+
+- name: "Upgrade"
+  command: nextcloud.occ upgrade
+  register: upgrade_log
+  notify: restart nextcloud
+
+# 移行元データの削除(移行に不具合があった場合にやり直せるように一応残す．正常に移行できたら消す)
+# - name: "Delete garbage files [nextcloud_data]"
+#   file:
+#     path: "{{ copied_datapath }}"
+#     state: absent
+
+# - name: "Delete garbage files [.htaccess]"
+#   file:
+#     path: "nextcloud.htaccess"
+#     state: absent

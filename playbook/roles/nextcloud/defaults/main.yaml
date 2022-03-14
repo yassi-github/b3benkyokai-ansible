@@ -1,0 +1,69 @@
+---
+nextcloud:
+  datadir_path: /var/snap/nextcloud/common/nextcloud/data
+  configdir_path: /var/snap/nextcloud/current/nextcloud/config
+  # accesible ip address
+  # can be accessed from localhost and ip address
+  trusted_domains:
+    - localhost
+    - "{{ ansible_default_ipv4.address }}"
+  # migration version.
+  trusted_domains_migration:
+    - localhost
+    # fqdn: hostname
+    - "{{ ansible_hostname }}"
+    # for debug
+    - "{{ ansible_default_ipv4.address }}"
+  # port
+  port:
+    http: '80'
+    https: '443'
+  # admin account username, password
+  admin_username: user
+  admin_password: !vault |
+          $ANSIBLE_VAULT;1.1;AES256
+          61376137663964363966363933613566396334616235656565333030346366343032306238636533
+          3663393537346135383233626339666264376665373261380a616465313661316166636662633932
+          33643962383164323039373439636638613865393435326231373234643030373962616266613937
+          3239343635613530380a343438663764636164313431363961643161333336366635663139663464
+          3063
+
+# url(only work behind loadbalancer)
+overwrite_cli_url: |
+  {% if set_self_sign %}
+  https://{{ ansible_hostname }}/{{ url_child_path }}
+  {% else %}
+  http://{{ ansible_hostname }}/{{ url_child_path }}
+  {% endif%}
+# url(only work behind loadbalancer)
+url_child_path: nextcloud
+
+# Hostname that allow access
+trusted_domains_block: |
+  {% if migration_mode %}
+  {% for domain in nextcloud.trusted_domains_migration %}
+      {{ loop.index }} => '{{ domain }}',
+  {% endfor %}
+  {% else %}
+  {% for domain in nextcloud.trusted_domains %}
+      {{ loop.index }} => '{{ domain }}',
+  {% endfor %}
+  {% endif %}
+
+# Switch to yes if you use the self-sign.
+set_self_sign: no
+
+# If no, migration.yaml will not be excuted.
+migration_mode: no
+# Directory path for placement of migration data.
+copied_datapath: /root/nextcloud_data
+# Switch to yes after copying nextcloud datadir.
+copied_data: no
+
+finish_message: |-
+  Finish!
+  When you are sure there is no problem, 
+  you can delete the
+    {{ copied_datapath }},
+    /root/nextcloud.htaccess.tmp
+  files.

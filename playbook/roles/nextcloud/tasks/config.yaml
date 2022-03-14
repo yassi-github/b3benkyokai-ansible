@@ -1,0 +1,84 @@
+---
+- name: "check installed"
+  stat:
+    path: "{{ nextcloud.datadir_path }}"
+    get_checksum: no
+  register: datadir_stat
+
+- name: "make admin user"
+  command: "nextcloud.manual-install {{ nextcloud.admin_username }} {{ nextcloud.admin_password | regex_replace('\n$') }}"
+  when: not datadir_stat.stat.exists
+
+# edit config.php
+- name: "Add loglevel config line"
+  lineinfile:
+    path: "{{ nextcloud.configdir_path }}/config.php"
+    insertafter: "(.*)log(.*)"
+    line: "  'loglevel' => 2,"
+    state: present
+  notify: restart nextcloud
+
+- name: "Add trusted_domains"
+  lineinfile:
+    path: "{{ nextcloud.configdir_path }}/config.php"
+    regexp: "(.*)0 => 'localhost'(.*)"
+    line: "{{ trusted_domains_block }}"
+    backrefs: yes
+    state: present
+  when: not migration_mode
+  notify: restart nextcloud
+
+- name: "Check http port"
+  command: snap get nextcloud ports.http
+  register: nextcloud_current_ports_http
+  changed_when: no
+- name: "Change http port"
+  command: snap set nextcloud ports.http={{ nextcloud.port.http }}
+  changed_when: nextcloud_current_ports_http.stdout != nextcloud.port.http
+  notify: restart nextcloud
+
+- name: "Check https port"
+  command: snap get nextcloud ports.https
+  register: nextcloud_current_ports_https
+  changed_when: no
+- name: "Change https port"
+  command: snap set nextcloud ports.https={{ nextcloud.port.https }}
+  when: set_self_sign
+  changed_when: nextcloud_current_ports_https.stdout != nextcloud.port.https
+  notify: restart nextcloud
+
+- name: "Enable SSL/TLS by self-sign"
+  command: "nextcloud.enable-https self-signed"
+  when: set_self_sign
+  notify: restart nextcloud
+
+---
+
+# If locate nextcloud behind loadbalancer,
+
+# change url and
+# - name: "Modify url config"
+#   lineinfile:
+#     path: "{{ nextcloud.configdir_path }}/config.php"
+#     regexp: "(.*)'overwrite.cli.url' => (.*)"
+#     line: "'overwrite.cli.url' => '{{ overwrite_cli_url }}',"
+#     state: present
+#   notify: restart nextcloud
+
+# - name: "Change url path"
+#   command: nextcloud.occ config:system:set overwritewebroot --value="/{{ url_child_path }}"
+
+# change port and
+# - name: "Check http port"
+#   command: snap get nextcloud ports.http
+#   register: nextcloud_current_ports_http
+#   changed_when: no
+# - name: "Change http port"
+#   command: snap set nextcloud ports.http={{ nextcloud.port.http }}
+#   changed_when: nextcloud_current_ports_http.stdout != nextcloud.port.http
+#   notify: restart nextcloud
+
+# disable ssl
+# - name: "Disable SSL/TLS"
+#   command: "nextcloud.disable-https"
+#   notify: restart nextcloud
