@@ -6,7 +6,7 @@ Ansibleはいいぞ
 用意していたLinuxマシンに入れておいてください。
 
 ```
-git clone 
+git clone https://github.com/yassi-github/b3benkyokai-ansible.git
 ```
 
 ## Ansibleとは？
