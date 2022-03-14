@@ -52,7 +52,6 @@
   when: set_self_sign
   notify: restart nextcloud
 
----
 
 # If locate nextcloud behind loadbalancer,
 
