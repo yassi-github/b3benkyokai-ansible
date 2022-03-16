@@ -156,7 +156,7 @@ ssh [リモートノードのユーザー名]@[リモートノードのアドレ
 今回は、予め書いておいたPlaybookを使用する。`ansible`ディレクトリを参照されたい。  
 ファイルを見てもらうと、Playbookとはどんなものかがよくわかるだろう。
 
-用語の解説を記載する。
+一部用語の解説を記載する。
 
 - Playbook:  
     roleとインベントリファイルなどからなる、ファイルのまとまりを指す。
@@ -169,6 +169,24 @@ ssh [リモートノードのユーザー名]@[リモートノードのアドレ
 - task:  
     サーバ操作の実行単位。結局のところ、taskを実行しまくって構成管理を行う。taskはAnsibleのmoduleを使用して実行される。taskの定義方法は、[moduleのリファレンス](https://docs.ansible.com/ansible/latest/collections/ansible/builtin/#modules)を見ながらYAMLファイルに書いていく。(リファレンスと言ってもExampleが豊富で非常に読みやすい)
 
+図にまとめるとこんな感じ。
+
+```
++----------------------------------------+
+| +-------------+  +-------------+       |
+| |defaults/    |  |defaults/    |       |
+| | ..snip..    |  | ..snip..    |       |
+| |tasks/       |  |tasks/       |       |
+| | └─ main.yml |  | └─ main.yml |       |
+| |    - task   |  |    - task   |       |
+| |    - task   |  |    - task   |       |
+| |     ...     |  |     ...     |       |
+| +-------------+  +-------------+       |
+|   roles/web/      roles/mysql/    ...  |
++----------------------------------------+
+                Playbook 
+```
+
 さて、ファイルの読み方がわかったところで、自分用にPlaybookを書き換えてみる。
 
 ### 3. Playbookを各自環境に合うように書き換える
@@ -176,9 +194,23 @@ ssh [リモートノードのユーザー名]@[リモートノードのアドレ
 - vault passwordを変更:
     暗号化のためのパスワードを`.vault_password`に書き込む。
     - `ansible-vault`コマンドを使用することで、ファイルレベルや変数レベルで暗号化ができる。  
-        playbookはGitなどのバージョン管理システムで管理されるべきだが、パスワードを記述した変数(`ansible_become_password`など)をそこで他人に見られるとまずいため。  
+        ```
+        login_password: mypassword123
+        ```
+        としておくのはまずいので暗号化すると
+        ```
+        login_password: !vault |
+                  $ANSIBLE_VAULT;1.1;AES256
+                  36633833363161396532626163616634613164366466373361303638376533323863623934643933
+                  3638363636656439626330636135646230373436653662640a326461343164303337306136613137
+                  61366461353036366361356536386166616365366163333934326634396666313133386634393333
+                  3233336566326538360a643535313733663535316138613961313239353665616633633230636337
+                  3531
+        ```
+        とできる。
+        これが必要な理由: playbookはGitなどのバージョン管理システムで管理されるべきだが、パスワードを記述した変数(`ansible_become_password`など)をそこで他人に見られるとまずいため。  
         暗号化した[ファイル/変数]は、playの際に自動で復号されたものが適用される。  
-        decryptで復号もできるし、editで一時的に復号し編集することも可能。  
+        ファイルの場合、decryptで復号もできるし、editで一時的に復号し編集することも可能。  
         よく使うのは以下の暗号化のコマンド。
         - ファイルレベルの暗号化: `ansible-vault encrypt [file path]`
         - 変数レベルの暗号化: `ansible-vault encrypt_string`
@@ -234,5 +266,5 @@ Nextcloudのほうの設定は少し書いてコメントアウトしていま�
 # ご参考まで
 
 [Ansible Galaxy](https://galaxy.ansible.com/): 他人の作ったモジュールやroleを配布しているサイト。検索結果の画面はブラウザが停止するほど重い。  
-[Ansible workshops](https://github.com/ansible/workshops/tree/devel/roles): サンプルのroleなどが書かれている。AnsibleはRedHat傘下なのでRHELやRedHatの営業がコンテンツに入っている。
-[Ansible Documentation](https://docs.ansible.com/ansible/2.9_ja/)
+[Ansible workshops](https://github.com/ansible/workshops/tree/devel/roles): サンプルのroleなどが書かれている。AnsibleはRedHat傘下なのでRHELやRedHatの営業がコンテンツに入っている。  
+[Ansible Documentation](https://docs.ansible.com/ansible/2.9_ja/): 日本語版もあり(version 2.9のみ)。全てはここに。
