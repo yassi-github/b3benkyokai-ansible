@@ -28,7 +28,7 @@ git clone https://github.com/yassi-github/b3benkyokai-ansible.git
 
 ||ベース言語|構築設定ファイル|クライアントへの操作|GitHub Star|
 |-|-|-|-|-|
-|Ansible|Python|Playbook(YAML)|SSH Connection|52.3k|
+|Ansible|Python|Playbook((YAML) + JINJA2)|SSH Connection|52.3k|
 |Chef|Ruby|Recipe(Ruby like DSL)|Install Agent|6.8k|
 |Puppet|Ruby|manifest(Ruby like DSL)|Install Agent|6.5k|
 
@@ -44,6 +44,56 @@ AnsibleはクライアントにAgentを入れなくても使える！
 データシリアライズ言語。JSONみたいなやつ。
 
 ちょっとｋｗｓｋ: https://circleci.com/ja/blog/what-is-yaml-a-beginner-s-guide/
+
+## Jinja2?
+
+Python用のテンプレートエンジン。  
+テンプレートエンジン: HTMLなどの自動構成に使う。変数と制御構文を使ってテキストを組み上げることができる。
+
+例えば、こういうリストを用意する。
+
+```py
+seq = ["hoge", "huga", "piyo"]
+```
+
+(AnsibleだとYAML形式なのでリストはこのように宣言する)
+```yaml
+seq:
+  - "hoge"
+  - "huga"
+  - "piyo"
+```
+
+繰り返し文のjinja2テンプレート。
+
+```html
+<ul>
+{% for item in seq %}
+    <li>{{ item }}</li>
+{% endfor %}
+</ul>
+```
+
+エンコードするとこのような出力が得られる。
+
+```html
+<ul>
+    <li>hoge</li>
+    <li>huga</li>
+    <li>piyo</li>
+</ul>
+```
+
+その他にも、変数のフィルタ
+
+```
+{{ 'secretpassword' | password_hash('sha256', 'mysecretsalt') }}
+# => "$5$mysecretsalt$ReKNyDYjkKNqRVwouShhsEqZ3VOE8eoVO4exihOfvG4"
+```
+
+機能でフォーマットの変換ができる。
+
+このjinja2テンプレートエンジンを使うことで、柔軟なファイルの記述が可能となっている。
 
 ## Ansibleの哲学
 
